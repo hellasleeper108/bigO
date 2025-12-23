@@ -3,26 +3,31 @@ import time
 import random
 import math
 import itertools
+import os
+
+# Try to import curses
+try:
+    import curses
+    CURSES_AVAILABLE = True
+except ImportError:
+    CURSES_AVAILABLE = False
 
 # ==========================================
-#  BIG O SANDBOX - EDUCATIONAL TOOL
+#  BIG O SANDBOX - EDUCATIONAL TOOL V2
 # ==========================================
 #
-#  Welcome to the Big O Sandbox!
-#  This program demonstrates how different algorithms grow in complexity.
-#  
-#  MODES:
-#  1. Standard (Run without args): automated test of O(1) -> O(n^2).
-#  2. Explain: Run with '--explain' to see definitions.
-#  3. Custom: Run with '--custom' to test YOUR own function below.
+#  Features:
+#  - Interactive Menu & Validation
+#  - Comparison Mode (Side-by-Side)
+#  - Step-Through Mode (Pause & Analyze)
+#  - ASCII & Curses Visualization
+#  - Safety Rails for Exponential/Factorial
 #
 # ==========================================
 
 # --- CUSTOM USER SECTION ---
 # Edit this function to test your own code's complexity!
-# Try changing the logic and see if the analysis matches your guess.
-
-USER_GUESS = "O(n)" # Guess your complexity: O(1), O(n), O(n^2), etc.
+USER_GUESS = "O(n)" 
 
 def custom_user_function(n):
     """
@@ -30,64 +35,43 @@ def custom_user_function(n):
     Currently: A simple loop (O(n)).
     """
     count = 0
-    # Example: Single loop = O(n)
     for i in range(n):
         count += 1
-    
-    # Example: Nested loop = O(n^2)
-    # for i in range(n):
-    #     for j in range(n):
-    #         count += 1
     return count
 
 # ==========================================
 
-EXPLANATIONS = {
-    "O(1)": "Constant Time: The operation takes the same amount of time regardless of input size. Example: Accessing an array index.",
-    "O(log n)": "Logarithmic Time: The time grows slowly as input increases. Doubling N adds only one unit of work. Example: Binary Search.",
-    "O(n)": "Linear Time: The time grows directly proportional to input. Doubling N doubles the time. Example: Simple loop.",
-    "O(n log n)": "Linearithmic Time: Common in efficient sorting algorithms. It's n operations, each taking log(n) time. Example: Merge Sort.",
-    "O(n^2)": "Quadratic Time: Time grows with the square of the input. Doubling N quadruples the time. Example: Nested loops.",
-    "O(2^n)": "Exponential Time: The runtime doubles with every single addition to N. Very scary. Example: Recursive Fibonacci.",
-    "O(n!)": "Factorial Time: Grows insanely fast. Checks every possible permutation. The 'heat death of the universe' complexity."
+CONFIG = {
+    "safety_enabled": True,
+    "max_safe_n_2pow": 30, # Safe limit for O(2^n) if safety is on
+    "max_safe_n_fact": 10, # Safe limit for O(n!) if safety is on
 }
 
-def measure_time(func, n):
-    """
-    Runs func(n) and returns the execution time in seconds.
-    We use perf_counter for high precision.
-    """
-    start = time.perf_counter()
-    func(n)
-    end = time.perf_counter()
-    return end - start
+EXPLANATIONS = {
+    "O(1)": "Constant Time: The operation takes the same amount of time regardless of input size. Gold standard.",
+    "O(log n)": "Logarithmic Time: Grows slowly. Doubling N adds a tiny constant amount of work. Excellent.",
+    "O(n)": "Linear Time: Growth is directly proportional to input. Fair and predictable.",
+    "O(n log n)": "Linearithmic Time: Slightly steeper than linear. Standard for good sorting algorithms.",
+    "O(n^2)": "Quadratic Time: Doubling N quadruples the time. Avoid for large datasets.",
+    "O(2^n)": "Exponential Time: The runtime doubles with every single addition to N. Impractical for N > 40.",
+    "O(n!)": "Factorial Time: Checks every permutation. Impractical for N > 12."
+}
 
 # --- ALGORITHMS ---
 
-def constant_time(n):
-    """O(1): Always does 1 operation, ignored N."""
-    return n + 1
-
+def constant_time(n): return n + 1
 def logarithmic_time(n):
-    """O(log n): Cuts problem in half repeatedly."""
     count = 0
     while n > 1:
         n //= 2
         count += 1
     return count
-
 def linear_time(n):
-    """O(n): Iterates n times."""
     count = 0
-    for i in range(n):
-        count += 1
+    for i in range(n): count += 1
     return count
-
 def linearithmic_time(n):
-    """O(n log n): Runs log(n) work n times (simulated)."""
     count = 0
-    # We simulate this by doing a loop of n, and an easy O(log n) op inside
-    # (like resizing/copying, but math is cleaner here for pure CPU work)
     limit = n
     for i in range(n):
         temp = limit
@@ -95,262 +79,403 @@ def linearithmic_time(n):
             temp //= 2
             count += 1
     return count
-
 def quadratic_time(n):
-    """O(n^2): Nested loops."""
     count = 0
     for i in range(n):
-        for j in range(n):
-            count += 1
+        for j in range(n): count += 1
     return count
-
-def exponential_time_safe(n):
-    """
-    O(2^n) - Capped for safety in standard mode.
-    Simulates recursion without the stack overflow risk for 'moderate' n.
-    """
-    # Actually running 2^n iterations
+def exponential_time_safe(n): # Helper to simulate work without stack depth issues
+    if CONFIG["safety_enabled"] and n > CONFIG["max_safe_n_2pow"]:
+        raise ValueError(f"Safety limits prevent running O(2^n) with N={n}. Max safe N is {CONFIG['max_safe_n_2pow']}.")
     count = 0
-    target = 2**n
-    # Check for sane limit before running
-    if target > 50_000_000: # hard cap for auto-run
-        return 0
-    
-    # We iterate target times
-    for i in range(target):
+    target = 2**n 
+    # Hard cap to prevent freezing even if safety is somehow bypassed or high
+    if target > 100_000_000: return 0 
+    for i in range(target): count += 1
+    return count
+def factorial_time(n):
+    if CONFIG["safety_enabled"] and n > CONFIG["max_safe_n_fact"]:
+         raise ValueError(f"Safety limits prevent running O(n!) with N={n}. Max safe N is {CONFIG['max_safe_n_fact']}.")
+    count = 0
+    # Simulated work: permutations grow as n!
+    # We use a smaller loop to simulate the 'cost' if n is huge, but for n<=12 actual perms is fine
+    # For instructional honesty, we run actual perms if small, else error
+    for p in itertools.permutations(range(n)):
         count += 1
     return count
 
-# --- DANGER MODE ALGORITHMS ---
+ALGORITHMS = {
+    "1": ("O(1)", constant_time),
+    "2": ("O(log n)", logarithmic_time),
+    "3": ("O(n)", linear_time),
+    "4": ("O(n log n)", linearithmic_time),
+    "5": ("O(n^2)", quadratic_time),
+    "6": ("O(2^n)", exponential_time_safe),
+    "7": ("O(n!)", factorial_time)
+}
 
-def danger_recursive_fib(n):
-    """O(2^n): The classic recursive nightmare."""
-    if n <= 1: return n
-    return danger_recursive_fib(n-1) + danger_recursive_fib(n-2)
+# --- HELPER FUNCTIONS ---
 
-def danger_permutations(n):
-    """O(n!): Generates all permutations of a range."""
-    # itertools.permutations is highly optimized C, but it still has to generate n! items
-    # We consume it to ensure work is done
-    items = range(n)
-    count = 0
-    for p in itertools.permutations(items):
-        count += 1
-    return count
+def measure_time(func, n):
+    try:
+        start = time.perf_counter()
+        func(n)
+        return time.perf_counter() - start
+    except ValueError as e:
+        print(f"\n[!] SKIPPED: {e}")
+        return None
+    except RecursionError:
+        print("\n[!] CRASH: Recursion limit reached.")
+        return None
+    except KeyboardInterrupt:
+        print("\n[!] ABORTED by user.")
+        return None
 
-# --- VISUALIZATION ---
-
-def draw_bar(val, max_val, width=30):
-    """Returns a string of '#' proportional to val/max_val."""
-    if max_val == 0: return ""
-    
+def draw_bar(val, max_val, width=40, char="#"):
+    if max_val == 0 or val is None: return ""
     ratio = val / max_val
     num_chars = int(ratio * width)
-    
-    # Ensure at least one char if value is non-zero but very small (unless logic dictates otherwise)
-    if num_chars == 0 and val > 0:
-        return "." # Tiny value indicator
-    return "#" * num_chars
+    if num_chars == 0 and val > 0: return "." 
+    return char * num_chars
 
-# --- CUSTOM ANALYSIS ---
+def get_valid_int(prompt, min_val=0, max_val=float('inf')):
+    while True:
+        try:
+            val = input(prompt).strip()
+            if not val: continue 
+            val = int(val)
+            if min_val <= val <= max_val:
+                return val
+            print(f"Please enter a number between {min_val} and {max_val}.")
+        except ValueError:
+            print("Invalid input. Please enter an integer.")
 
-def analyze_custom(func, guess_str):
-    print(f"\n--- ANALYZING CUSTOM FUNCTION: {guess_str} ---")
-    print("Disclaimer: This is empirical testing. OS noise, caching, and small N can skew results.")
+def select_algorithms():
+    print("\nAvailable Algorithms:")
+    for k, v in ALGORITHMS.items():
+        print(f"[{k}] {v[0]}")
+    print("[A] All Safe (1-5)")
     
-    test_ns = [1000, 2000, 4000, 8000] # Adjust if function is very slow/fast
+    choice = input("Select algorithms (comma separated, e.g., '1,3') or 'A': ").strip().lower()
+    selected = []
     
-    # Pre-check speed with a small n to adjust range if needed
-    t_start = time.perf_counter()
-    func(500)
-    if time.perf_counter() - t_start > 0.5:
-        print("Function seems slow, reducing test range...")
-        test_ns = [10, 20, 40, 80]
+    if choice == 'a':
+        return [ALGORITHMS[k] for k in ["1","2","3","4","5"]]
     
-    print(f"{'N':<10} | {'Time (s)':<12} | {'Ratio (T(2n)/T(n))':<20}")
-    print("-" * 50)
+    parts = choice.split(',')
+    for p in parts:
+        p = p.strip()
+        if p in ALGORITHMS:
+            selected.append(ALGORITHMS[p])
     
-    prev_time = None
-    ratios = []
+    if not selected:
+        print("No valid selection. Defaulting to O(n).")
+        return [ALGORITHMS["3"]]
+    return selected
+
+def configure_range():
+    print("\n--- Configure Input Range ---")
+    start = get_valid_int("Start N (e.g. 100): ", 1)
+    end = get_valid_int(f"End N (must be > {start}): ", start + 1)
+    step = get_valid_int("Step size: ", 1)
+    return range(start, end + 1, step)
+
+# --- VISUALIZATION & MODES ---
+
+def run_batch_test(algorithms, n_range, step_through=False):
+    print(f"\n{'='*60}")
+    print(f"{'BATCH TEST':^60}")
+    print(f"{'='*60}")
     
-    for n in test_ns:
-        t = measure_time(func, n)
+    # Store results: results[alg_name] = [(n, time), ...]
+    results = {alg[0]: [] for alg in algorithms}
+    
+    # Pre-calculate max time for scaling if NOT stepping through (for consistent chart)
+    # If stepping through, we might scale locally or just let it flow.
+    # For simplicity, we'll scale per row or keep a running max.
+    
+    global_max_time = 0.000001
+    
+    header = f"{'N':<8} | {'Algorithm':<12} | {'Time (s)':<10} | {'Growth Visualization'}"
+    print(header)
+    print("-" * len(header))
+
+    prev_times = {alg[0]: None for alg in algorithms}
+
+    for n in n_range:
+        current_batch_times = []
         
-        ratio_str = "-"
-        if prev_time is not None and prev_time > 0:
-            ratio = t / prev_time
-            ratios.append(ratio)
-            ratio_str = f"{ratio:.2f}x"
+        for name, func in algorithms:
+            t = measure_time(func, n)
+            if t is not None:
+                results[name].append((n, t))
+                current_batch_times.append((name, t))
+                if t > global_max_time: global_max_time = t
+            else:
+                current_batch_times.append((name, None))
+
+        # Dynamic scaling for this batch? 
+        # Or simple linear scaling based on current max makes tiny bars visible early on.
+        batch_max = max((t for _, t in current_batch_times if t is not None), default=0)
+        if batch_max == 0: batch_max = 0.000001
         
-        print(f"{n:<10} | {t:<12.6f} | {ratio_str}")
-        prev_time = t
+        for name, t in current_batch_times:
+            if t is None:
+                bar = "SKIPPED"
+                t_str = "---"
+            else:
+                bar = draw_bar(t, batch_max, width=25)
+                t_str = f"{t:.6f}"
+            
+            print(f"{n:<8} | {name:<12} | {t_str:<10} | {bar}")
+            
+            # Step-through analysis
+            if step_through and t is not None:
+                prev = prev_times[name]
+                if prev is not None and prev > 0:
+                    growth = t / prev
+                    if growth > 1.2:
+                        print(f"       > {name} grew {growth:.1f}x")
         
-    print("-" * 50)
-    
-    if not ratios:
+        print("-" * len(header))
+        
+        # Update prev times
+        for name, t in current_batch_times:
+             if t is not None: prev_times[name] = t
+             
+        if step_through:
+            input("\n[Paused] Press Enter to continue to next N...")
+            print("-" * len(header))
+
+    return results
+
+def run_comparison_mode():
+    print("\n--- Comparison Mode ---")
+    print("Select strictly 2 algorithms to fight.")
+    algs = select_algorithms()
+    if len(algs) < 2:
+        print("Need at least 2 for comparison!")
         return
 
-    avg_ratio = sum(ratios) / len(ratios)
-    print(f"Average Growth Ratio: ~{avg_ratio:.2f}x")
+    n_range = configure_range()
     
-    # Theoretical mapping (doubling N)
-    # O(1) -> 1x
-    # O(log n) -> 1x (approx, log 2n = log n + 1)
-    # O(n) -> 2x
-    # O(n^2) -> 4x
-    # O(2^n) -> Squaring the time (crazy high)
-    
-    if avg_ratio < 1.1:
-        found = "O(1) or O(log n)"
-    elif 1.5 <= avg_ratio <= 2.5:
-        found = "O(n)"
-    elif 3.5 <= avg_ratio <= 4.5:
-        found = "O(n^2)"
-    elif avg_ratio > 5:
-        found = "O(2^n) or worse"
-    else:
-        found = "Unclear/Linearithmic"
-        
-    print(f"Based on this run, it behaves like: {found}")
-    if guess_str in found or (guess_str == "O(n^2)" and "4.0" in str(avg_ratio)):
-         print("Verdict: Your guess seems PLAUSIBLE.")
-    else:
-         print("Verdict: Data does not strongly support your guess (or N is too small).")
-
-# --- MAIN ---
-
-def run_standard_suite():
-    suite = [
-        ("O(1) Constant", constant_time, [100, 1000, 10000, 100000]),
-        ("O(log n) Logarithmic", logarithmic_time, [100, 1000, 10000, 100000]),
-        ("O(n) Linear", linear_time, [100, 1000, 10000, 100000]),
-        ("O(n log n) Linearithmic", linearithmic_time, [100, 1000, 10000, 100000]),
-        # Reduced N for quadratic to keep it snappy
-        ("O(n^2) Quadratic", quadratic_time, [100, 500, 1000, 2000]),
-        # Very small N for exponential simulation
-        ("O(2^n) Exponential (Safe)", exponential_time_safe, [10, 15, 20, 22])
-    ]
-
-    print("\n=== RUNNING AUTOMATED BIG-O COMPLEXITY TEST ===")
-    
-    results_summary = []
-
-    for name, func, n_values in suite:
-        print(f"\n--- Testing {name} ---")
-        print(f"{'N':<10} | {'Time (s)':<12} | {'Growth':<30}")
-        print("-" * 55)
-        
-        times = []
-        for n in n_values:
-            t = measure_time(func, n)
-            times.append(t)
-        
-        # Max time in this specific batch (for local scaling)
-        max_t = max(times) if times else 0
-        
-        for n, t in zip(n_values, times):
-            bar = draw_bar(t, max_t)
-            print(f"{n:<10} | {t:<12.6f} | {bar}")
-            
-        # Quick educational blurb
-        if "O(1)" in name:
-            print("> Note: Time stays basically flat despite 1000x input size.")
-        elif "O(n)" in name and "log" not in name:
-            print("> Note: 10x input = ~10x time. Nice and predictable.")
-        elif "O(n^2)" in name:
-            print("> Note: Doubling input (1k to 2k) -> ~4x time. Validating squares!")
-            
-        results_summary.append((name, n_values[-1], times[-1]))
-
-    # SUMMARY
-    print("\n\n=== FINAL COMPARISON (At largest common reasonable N) ===")
-    print("How long would they take if we gave them all the same heavy workload?")
-    print("(Extrapolated/Estimated for slower ones based on behavior)")
-    print(f"{'Algorithm':<25} | {'Behavior':<40}")
+    print(f"\n{'N':<8} | {algs[0][0]:<12} | {algs[1][0]:<12} | {'Ratio (A/B)':<12} | {'Trend'}")
     print("-" * 65)
-    for name, _, _ in results_summary:
-        comment = EXPLANATIONS.get(name.split(" ")[0], "Complex complexity.")
-        print(f"{name:<25} | {comment}")
-    print("-" * 65)
-
-def run_danger_mode():
-    print("\n\n" + "!"*40)
-    print("       WELCOME TO DANGER MODE")
-    print("!"*40)
-    print("Warning: These algorithms grow FAST. We are not protecting you here.")
-    print("If it gets stuck, press Ctrl+C to bail out.\n")
     
-    while True:
-        print("Choose your poison:")
-        print("1. Recursive Fibonacci O(2^n) - The elegant stack overflow-er")
-        print("2. Permutation Generator O(n!) - The universe heater")
-        print("3. Return to safety")
+    for n in n_range:
+        t1 = measure_time(algs[0][1], n)
+        t2 = measure_time(algs[1][1], n)
         
-        choice = input("\nSelect (1-3): ").strip()
-        
-        if choice == '3':
-            break
-            
-        func = None
-        algo_name = ""
-        
-        if choice == '1':
-            func = danger_recursive_fib
-            algo_name = "O(2^n)"
-            print("\nRecommended max N: 35 (Wait time: seconds to minutes)")
-            print("N=40 might take a while. N=50? See you next year.")
-        elif choice == '2':
-            func = danger_permutations
-            algo_name = "O(n!)"
-            print("\nRecommended max N: 11 (Wait time: seconds)")
-            print("N=12 is 12x slower. N=13 is 13x slower than that.")
-            print("12! = 479,001,600 iterations.")
-        else:
+        if t1 is None or t2 is None:
+            print(f"{n:<8} | {'xxx':<12} | {'xxx':<12} | FAILED")
             continue
             
-        try:
-            n_val = int(input(f"Enter N for {algo_name}: "))
-            print(f"Running {algo_name} with N={n_val}...")
-            print("Calculating... (Ctrl+C to abort)")
-            
-            t = measure_time(func, n_val)
-            print(f"\nSUCCESS! Finished in {t:.4f} seconds.")
-            
-            if t < 0.1:
-                print("Too fast? Try a slightly larger N next time.")
-            else:
-                print("Phew. That was some heavy lifting.")
-                
-        except ValueError:
-            print("That's not a number.")
-        except KeyboardInterrupt:
-            print("\n\nCowardly cancellation... good choice! That was taking too long.")
-        except RecursionError:
-            print("\n\nCRASH! Recursion depth exceeded. Python saved you from yourself.")
+        ratio = t1 / t2 if t2 > 0 else 0
         
-        print("-" * 30)
+        trend = "Same"
+        if ratio > 5: trend = f"{algs[0][0]} slower"
+        elif ratio < 0.2: trend = f"{algs[1][0]} slower"
+        elif ratio > 1.5: trend = "A > B"
+        elif ratio < 0.7: trend = "B > A"
+        
+        print(f"{n:<8} | {t1:<12.5f} | {t2:<12.5f} | {ratio:<12.2f} | {trend}")
+
+    print("\nAnalysis:")
+    name1, name2 = algs[0][0], algs[1][0]
+    print(f"Comparing {name1} vs {name2}:")
+    if "O(n^2)" in name1 and "O(n)" in name2:
+        print(f"> {name1} loses badly as N grows because it does N times more work.")
+    elif "O(log n)" in name1 or "O(log n)" in name2:
+         print(f"> The Log algorithm is vastly superior for large N.")
+    elif "!" in name1 or "!" in name2:
+         print("> Factorial is just unreasonable.")
+    else:
+         print("> Check the ratio column. If it stays constant, they represent the same complexity class.")
+
+def run_curses_mode():
+    if not CURSES_AVAILABLE:
+        print("\n[!] Error: 'curses' module not available (Common on Windows without 'windows-curses').")
+        print("Falling back to standard mode.")
+        return
+
+    def curses_main(stdscr):
+        curses.curs_set(0)
+        stdscr.nodelay(0)
+        stdscr.clear()
+        
+        # Setup colors
+        curses.start_color()
+        curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+        curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)
+        
+        # Select algorithms (hardcoded for demo simplicity in curses)
+        demo_algs = [ALGORITHMS["3"], ALGORITHMS["5"], ALGORITHMS["2"]] # n, n^2, log n
+        
+        n = 100
+        max_y, max_x = stdscr.getmaxyx()
+        
+        while True:
+            stdscr.clear()
+            stdscr.addstr(0, 0, "Big O Curses Viz (Press 'n' for next step, 'q' to quit)", curses.A_BOLD)
+            
+            row = 2
+            max_time_in_step = 0
+            results = []
+            
+            for name, func in demo_algs:
+                t = measure_time(func, n)
+                if t is None: t = 0
+                results.append((name, t))
+                if t > max_time_in_step: max_time_in_step = t
+            
+            for name, t in results:
+                bar_len = int((t / (max_time_in_step + 0.00001)) * (max_x - 30))
+                color = curses.color_pair(1)
+                if t > 0.05: color = curses.color_pair(2)
+                if t > 0.5: color = curses.color_pair(3)
+                
+                stdscr.addstr(row, 0, f"{name:<10} | {t:.5f}s | ", curses.A_NORMAL)
+                stdscr.addstr(row, 25, "#" * bar_len, color)
+                row += 2
+                
+            stdscr.addstr(row+2, 0, f"Current N: {n}")
+            stdscr.refresh()
+            
+            key = stdscr.getch()
+            if key == ord('q'):
+                break
+            elif key == ord('n'):
+                n += 100
+                if n > 2000: n += 500 # Skip faster later
+    
+    curses.wrapper(curses_main)
+
+def print_final_summary(results):
+    if not results: return
+    print("\n\n" + "="*50)
+    print(f"{'FINAL RANKING SUMMARY':^50}")
+    print("="*50)
+    print("Ranking algorithms based on their behavior at max N:\n")
+    
+    # Flatten results to find end-state
+    # results format: {'O(n)': [(10, 0.01), (20, 0.02)], ...}
+    
+    final_stats = []
+    for name, data in results.items():
+        if not data: continue
+        last_n, last_t = data[-1]
+        final_stats.append((name, last_t, last_n))
+        
+    # Sort by time asc
+    final_stats.sort(key=lambda x: x[1])
+    
+    for rank, (name, t, n) in enumerate(final_stats, 1):
+        status = "Unknown"
+        if t < 0.001: status = "Instant (Perfect)"
+        elif t < 0.1: status = "Fast (Good)"
+        elif t < 1.0: status = "Slugish (Careful)"
+        else: status = "Impractical (Bad)"
+        
+        # Judgment
+        judgment = ""
+        if "O(n!)" in name: judgment = "- It's a miracle this finished."
+        elif "O(2^n)" in name: judgment = "- Don't use this in production."
+        elif "O(n^2)" in name and t > 0.5: judgment = "- Does not scale well."
+        
+        print(f"{rank}. {name:<12}: {t:.5f}s (at N={n}) [{status}] {judgment}")
+        
+    print("\nTakeaway:")
+    slowest = final_stats[-1][0]
+    print(f" Avoid {slowest} if you value your free time.")
+
+# --- MAIN APP ---
+
+def main_menu():
+    while True:
+        print("\n" + "="*40)
+        print(" BIG O SANDBOX - MAIN MENU")
+        print("="*40)
+        print(f"Safety Limits: {'ON' if CONFIG['safety_enabled'] else 'OFF (Dangerous)'}")
+        print("1. Quick Standard Test (Automated)")
+        print("2. Custom Batch Test (Select Algs & Range)")
+        print("3. Comparison Mode (A vs B)")
+        print("4. Step-Through Mode (Pause & Learn)")
+        print(f"5. Toggle Safety Limits")
+        print("6. Curses Visualization Mode")
+        print("7. Explain Big-O Definitions")
+        print("8. Run Custom User Function")
+        print("9. Exit")
+        
+        choice = input("\nSelect option: ").strip()
+        
+        if choice == '1':
+            # Standard suite
+            algs = [ALGORITHMS["1"], ALGORITHMS["2"], ALGORITHMS["3"], ALGORITHMS["5"]]
+            results = run_batch_test(algs, [100, 500, 1000, 2000])
+            print_final_summary(results)
+            
+        elif choice == '2':
+            algs = select_algorithms()
+            rng = configure_range()
+            results = run_batch_test(algs, rng)
+            print_final_summary(results)
+            
+        elif choice == '3':
+            run_comparison_mode()
+            
+        elif choice == '4':
+            algs = select_algorithms()
+            rng = configure_range()
+            run_batch_test(algs, rng, step_through=True)
+            
+        elif choice == '5':
+            CONFIG["safety_enabled"] = not CONFIG["safety_enabled"]
+            print(f"\n>> Safety is now {'ON' if CONFIG['safety_enabled'] else 'OFF'}.")
+            
+        elif choice == '6':
+            run_curses_mode()
+            
+        elif choice == '7':
+            print("\n=== DEFINITIONS ===")
+            for k, v in EXPLANATIONS.items():
+                print(f"{k:<10}: {v}")
+                
+        elif choice == '8':
+            # Legacy custom function wrapper
+            import inspect
+            print("\nAnalyzing custom_user_function code...")
+            print(inspect.getsource(custom_user_function))
+            print("Running legacy analysis tool...")
+            # Inline the old analysis logic roughly or simpler version
+            n_vals = [1000, 2000, 4000]
+            prev = None
+            print(f"{'N':<10} | {'Time':<10} | {'Ratio'}")
+            for n in n_vals:
+                t = measure_time(custom_user_function, n)
+                ratio_str = f"{(t/prev):.2f}x" if prev and prev > 0 else "-"
+                print(f"{n:<10} | {t:.5f}s   | {ratio_str}")
+                prev = t
+                
+        elif choice == '9':
+            print("Exiting.")
+            sys.exit(0)
+            
+        else:
+            print("Invalid option.")
 
 if __name__ == "__main__":
-    if "--explain" in sys.argv:
-        print("\n=== BIG O NOTATION EXPLAINED ===\n")
-        for key, val in EXPLANATIONS.items():
-            print(f"{key:<10} : {val}")
+    # Check for CLI args from original legacy version to not break workflow if user used args
+    if "--curses" in sys.argv:
+        run_curses_mode()
         sys.exit(0)
-        
-    if "--custom" in sys.argv:
-        analyze_custom(custom_user_function, USER_GUESS)
+    elif "--explain" in sys.argv:
+        print("\n=== DEFINITIONS ===")
+        for k, v in EXPLANATIONS.items():
+             print(f"{k:<10}: {v}")
         sys.exit(0)
-
-    # Standard run
-    run_standard_suite()
     
-    # Optional danger mode prompt
     try:
-        print("\n" + "="*50)
-        user_input = input("Enter DANGER MODE to test O(n!)? (y/n): ").lower().strip()
-        if user_input == 'y':
-            run_danger_mode()
-        else:
-            print("\nExiting safely. Happy coding!")
+        main_menu()
     except KeyboardInterrupt:
-        print("\nBye!")
+        print("\nGood bye!")
