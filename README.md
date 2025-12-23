@@ -1,52 +1,74 @@
-# Big O Sandbox
+# Big O Visualizer
 
-A single-file Python interactive educational tool for exploring time complexities.
+A powerful, interactive Terminal User Interface (TUI) for exploring algorithm time complexity. Built with **Python**, **Textual**, and **Plotext**.
 
-![Big O Growth](https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Comparison_computational_complexity.svg/600px-Comparison_computational_complexity.svg.png)
-*(Image concept: Visualizing growth)*
+![Big O Visualizer TUI](https://raw.githubusercontent.com/placeholder/repo/main/docs/screenshot.png)
 
 ## Features
 
-- **Interactive Menu**: Easy navigation between modes.
-- **Automated Complexity Test**: Run a full suite O(1) through O(n^2) with ASCII visualizations.
-- **Comparison Mode**: Fight two algorithms side-by-side to see who wins (and why).
-- **Step-Through Mode**: Pause execution after each input size to "feel" the growth.
-- **Curses Visualization**: (Optional) Dynamic bar charts using terminal graphics (`--curses`).
-- **Safety Rails**: Limits specific to O(2ⁿ) and O(n!) to prevent infinite hanging.
-- **Final Logic**: A summary screen that ranks algorithms and judges their practicality.
+*   **Interactive TUI**: A modern terminal interface with mouse support, tabs, and live graphs.
+*   **Dual Modes**:
+    *   **Teaching Mode**: Safety rails enforced, slower updates for learning, green theme.
+    *   **Chaos Mode**: Limits removed, raw execution speed, red theme.
+*   **Real-time Visualization**:
+    *   **TUI**: Live Line or Scatter plots directly in your terminal.
+    *   **External**: Export data to a high-resolution **Matplotlib** window for detailed analysis.
+*   **Algorithm Library**: Compare O(1), O(log n), O(n), O(n log n), O(n^2), O(2^n), and O(n!).
+*   **Safety Rails**: Prevents freezing your machine by aborting dangerous operations (e.g., O(n!) with N=20).
+
+## Installation
+
+Requires Python 3.8+.
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/your-username/big-o-visualizer.git
+    cd big-o-visualizer
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    pip install textual plotext matplotlib
+    ```
 
 ## Usage
 
-### 1. Interactive Mode (Recommended)
-Just run the script to enter the main menu:
+Run the modular application package:
+
 ```bash
-python big_o_sandbox.py
+python -m big_o_app.main
 ```
 
-### 2. Examples
+### Controls
 
-**Comparison Mode (O(n) vs O(n^2)):**
+*   **Sidebar**:
+    *   **Mode**: Switch between Teaching and Chaos modes.
+    *   **Algorithms**: Select which functions to benchmarks.
+    *   **Range**: Set Start, End, and Step for input size N.
+    *   **Chart Type**: Toggle Line vs Scatter.
+    *   **Actions**: Run Comparison, Open in Matplotlib, or Quit.
+*   **Abort**: Cancel any running test immediately.
+
+## Project Structure
+
+This project has been refactored into a scalable modular architecture:
+
 ```text
-N        | O(n)         | O(n^2)       | Ratio (A/B)  | Trend
------------------------------------------------------------------
-100      | 0.00001      | 0.00005      | 0.12         | B > A
-1000     | 0.00005      | 0.00500      | 0.01         | O(n^2) slower
+big_o_app/
+├── main.py                # Entry point
+├── config.py              # Configuration & State
+├── algorithms/            # Algorithm implementations
+├── engine/                # Measurement & Safety logic
+└── ui/                    # Textual UI components
+    ├── app.py             # Main App logic
+    ├── screens.py         # Intro screens
+    └── viz.py             # Matplotlib integration
 ```
 
-**Final Ranking Summary:**
-```text
-1. O(log n): 0.00001s (at N=2000) [Instant (Perfect)]
-2. O(n)    : 0.00005s (at N=2000) [Fast (Good)]
-3. O(n^2)  : 0.25000s (at N=2000) [Slugish (Careful)] - Does not scale well.
-```
+## Contributing
 
-### 3. Quick Command Line Args
-- See explanations: `python big_o_sandbox.py --explain`
-- Launch directly into Curses mode: `python big_o_sandbox.py --curses`
-
-## Requirements
-- Python 3.6+
-- Standard libraries only (unless on Windows, where `curses` is optional but recommended).
+Contributions are welcome! Please open an issue or submit a PR for new algorithms or visualization features.
 
 ## License
+
 MIT
