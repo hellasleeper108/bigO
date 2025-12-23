@@ -23,7 +23,24 @@ Just run the script to enter the main menu:
 python big_o_sandbox.py
 ```
 
-### 2. Quick Command Line Args
+### 2. Examples
+
+**Comparison Mode (O(n) vs O(n^2)):**
+```text
+N        | O(n)         | O(n^2)       | Ratio (A/B)  | Trend
+-----------------------------------------------------------------
+100      | 0.00001      | 0.00005      | 0.12         | B > A
+1000     | 0.00005      | 0.00500      | 0.01         | O(n^2) slower
+```
+
+**Final Ranking Summary:**
+```text
+1. O(log n): 0.00001s (at N=2000) [Instant (Perfect)]
+2. O(n)    : 0.00005s (at N=2000) [Fast (Good)]
+3. O(n^2)  : 0.25000s (at N=2000) [Slugish (Careful)] - Does not scale well.
+```
+
+### 3. Quick Command Line Args
 - See explanations: `python big_o_sandbox.py --explain`
 - Launch directly into Curses mode: `python big_o_sandbox.py --curses`
 
